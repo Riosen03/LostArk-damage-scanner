@@ -132,9 +132,12 @@ with mss.mss() as sct:
 
         # =================================================================================
         # [text OCR Part]
-            # OCR로 크롭된 이미지 읽기 (detail=0은 텍스트 문자열만 리스트로 반환함)
-            ocr_result = reader.readtext(final_crop, detail=0)
 
+            # 크롭된 배열이 비어있지 않은 경우에만 OCR 수행
+            if final_crop.size > 0:
+                # OCR로 크롭된 이미지 읽기 (detail=0은 텍스트 문자열만 리스트로 반환함)
+                ocr_result = reader.readtext(final_crop, detail=0)
+           
             if ocr_result:
                 # 인식된 결과 리스트를 하나의 문자열로 합치기
                 raw_text = "".join(ocr_result)
@@ -234,9 +237,10 @@ while True:
                 break 
 
             try:
-                # 입력받은 문자열 쉼표로 split, 공백 제거 -> 숫자 리스트로 변환
-                del_indices = [int(idx.strip()) for idx in del_input.split(',')]
-                
+                # 입력받은 문자열을 정수 리스트로 변환(쉼표(,)기준 split, 공백제거)한 뒤, set()을 씌워 중복 입력 방지
+                raw_indices = [int(idx.strip()) for idx in del_input.split(',')]
+                del_indices = list(set(raw_indices))
+
                 # 인덱스가 꼬이지 않도록 내림차순으로 정렬해서 삭제
                 del_indices.sort(reverse=True)
                 
