@@ -1,5 +1,5 @@
-import cv2
-import numpy as np
+import cv2          # openCV
+import numpy as np  # numpy
 import mss          # 화면 캡처
 import easyocr      # OCR 라이브러리
 import re           # 정규표현식(문자열 필터링) 라이브러리
@@ -39,8 +39,8 @@ specialty = int(input("현재 특화 수치: "))
 # total_atk = 1790
 # specialty = 160
 
-# ==========================================
-# [OCR Load part]
+# =================================================================================
+# [OCR Load Part]
 # 숫자만 read -> 'en'(영어) 모델만 로드
 reader = easyocr.Reader(['en']) 
 print("OCR 로드 완료")
@@ -49,13 +49,13 @@ print("OCR 로드 완료")
 session_damages = [] # 검수를 위해 데미지만 임시로 모아둘 리스트
 damage_buffer = []
 last_detect_time = time.time()
-# ==========================================
+# =================================================================================
 
 
 # 화면 캡처를 위한 mss 객체 생성
 with mss.mss() as sct:
-    # ==============================================
-    # [ROI part]
+    # =================================================================================
+    # [ROI Part]
 
     # ROI 지정
     monitor = {"top": 250, "left": 600, "width": 800, "height": 600}    # 해당 위치는 직접 조절 필요
@@ -68,11 +68,11 @@ with mss.mss() as sct:
 
         # 캡처된 화면을 NumPy 배열로 변환 / BGRA 포맷을 OpenCV 처리를 위해 BGR 포맷으로 변환 (알파 채널 제거)
         img_bgr = cv2.cvtColor(np.array(sct_img), cv2.COLOR_BGRA2BGR)
-    # ==========================================
+    # =================================================================================
 
 
-        # ==========================================
-        # [Preprocessing part]
+        # =================================================================================
+        # [Preprocessing Part]
 
         # BGR을 HSV 색상 공간으로 변환
         hsv = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2HSV)
@@ -127,10 +127,10 @@ with mss.mss() as sct:
 
             # 최종적으로 잘라낸 흑백 숫자 이미지
             final_crop = mask_cleaned[crop_y1:crop_y2, crop_x1:crop_x2]
-        # ==========================================
+        # =================================================================================
 
 
-        # ==========================================
+        # =================================================================================
         # [text OCR Part]
             # OCR로 크롭된 이미지 읽기 (detail=0은 텍스트 문자열만 리스트로 반환함)
             ocr_result = reader.readtext(final_crop, detail=0)
@@ -162,7 +162,8 @@ with mss.mss() as sct:
             
             # 다음 타격을 위해 바구니를 깨끗하게 비우기
             damage_buffer.clear()
-        # ==========================================
+        # =================================================================================
+
 
         # 화면 출력
         # cv2.imshow('Original ROI', img_bgr)       
@@ -174,37 +175,90 @@ with mss.mss() as sct:
             break
 
 
+# =================================================================================
+# [data saving Part]
 # 루프 종료 후 열려있는 OpenCV 창 모두 닫기
 cv2.destroyAllWindows()
 
 # 수집 데이터 출력, 검수 및 DB 최종 적재
-print("\n" + "="*40)
 print("수집 종료. 데이터를 검수합니다.")
-print(f"총 {len(session_damages)}개의 데미지 데이터가 수집되었습니다.")
-print("수집된 데이터 리스트:", session_damages)
-print("="*40)
 
-# 저장 여부 체크
-save_confirm = input("\n위 데이터를 DB에 저장하시겠습니까? (y/n): ")
+while True:
+    print("\n" + "="*40)
+    print(f"수집 리스트 - 총 {len(session_damages)}개의 데미지 데이터")
+    print("-" * 40)
+    
+    # 리스트가 비어있으면 즉시 종료
+    if len(session_damages) == 0:
+        print("수집된 (또는 남은) 데이터가 없습니다. 프로그램을 종료합니다.")
+        break
 
-if save_confirm.lower() == 'y':
-    conn = init_db()
-    cursor = conn.cursor()
-    
-    # DB에 적재할 튜플 리스트 생성 (입력받은 스탯 포함)
-    db_records = [
-        (intelligence, specialty, weapon_atk, total_atk, dmg) 
-        for dmg in session_damages
-    ]
-    
-    # executemany를 이용한 빠르고 안전한 일괄 적재(Batch Insert)
-    cursor.executemany('''
-        INSERT INTO damage_logs (intelligence, specialty, weapon_atk, total_atk, damage_value)
-        VALUES (?, ?, ?, ?, ?)
-    ''', db_records)
-    
-    conn.commit()
-    conn.close()
-    print(f"\n성공적으로 {len(session_damages)}개의 데이터가 'damage_data.db'에 저장되었습니다!")
-else:
-    print("\n저장 취소. 수집된 데이터는 폐기됩니다.")
+    # 세로로 번호(인덱스)를 붙여서 출력
+    for i, dmg in enumerate(session_damages):
+        print(f"[{i}] : {dmg}")
+    print("="*40)
+
+    # 저장, 수정, 취소 선택
+    action = input("\n작업을 선택하세요. - 현 리스트 저장(y) / 일부 삭제(m) / 전체 취소(n) : ").lower()
+
+    # 저장 
+    if action == 'y':
+        conn = init_db()
+        cursor = conn.cursor()
+        
+        # DB에 적재할 튜플 리스트 생성 (입력받은 스탯 포함)
+        db_records = [
+            (intelligence, specialty, weapon_atk, total_atk, dmg) 
+            for dmg in session_damages
+        ]
+        
+        # executemany -> Batch Insert
+        cursor.executemany('''
+            INSERT INTO damage_logs (intelligence, specialty, weapon_atk, total_atk, damage_value)
+            VALUES (?, ?, ?, ?, ?)
+        ''', db_records)
+        
+        conn.commit()
+        conn.close()
+
+        # DB 저장 후 루프 break 및 프로그램 종료
+        print(f"\n성공적으로 {len(session_damages)}개의 데이터가 'damage_data.db'에 저장되었습니다.")
+        break
+
+    # 삭제 
+    elif action == 'm':
+        while True:
+            del_input = input("\n삭제할 데이터의 번호(인덱스)를 쉼표(,)로 구분하여 입력하세요 (예: 2, 5, 11) \n삭제 작업을 취소하려면 'c'를 입력하세요: ")
+            
+            if del_input.lower() == 'c':
+                break 
+
+            try:
+                # 입력받은 문자열 쉼표로 split, 공백 제거 -> 숫자 리스트로 변환
+                del_indices = [int(idx.strip()) for idx in del_input.split(',')]
+                
+                # 인덱스가 꼬이지 않도록 내림차순으로 정렬해서 삭제
+                del_indices.sort(reverse=True)
+                
+                for idx in del_indices:
+                    if 0 <= idx < len(session_damages):
+                        removed_val = session_damages.pop(idx)
+                        print(f"[-] 번호 [{idx}] 데이터 ({removed_val}) 삭제 완료")
+                    else:
+                        print(f"[!] 번호 [{idx}] 존재하지 않는 인덱스 > 무시")
+                # 수정 후 다시 while 루프
+                print("\n데이터가 수정되었습니다. 수정된 리스트로 다시 작업을 선택합니다.")
+                break
+
+            except ValueError:
+                print("\n입력 형식이 잘못되었습니다. 숫자와 쉼표(,)만 입력해주세요.")
+
+    # 취소      
+    elif action == 'n':
+        print("\n저장 취소. 수집된 모든 데이터가 폐기되었습니다.")
+        break # 루프 탈출 및 프로그램 종료
+
+    # 오입력
+    else:
+        print("\n올바른 명령어(y, m, n)를 입력해주세요.")
+# =================================================================================
