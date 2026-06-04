@@ -1,10 +1,43 @@
 import cv2
 import numpy as np
-import mss
-import easyocr  # OCR 라이브러리 추가
-import re       # 정규표현식(문자열 필터링) 라이브러리 추가
-import time     # 시간 측정을 위해 time 모듈 추가
-import collections # 최빈값 계산
+import mss          # 화면 캡처
+import easyocr      # OCR 라이브러리
+import re           # 정규표현식(문자열 필터링) 라이브러리
+import time         # 시간 측정을 위한 time 모듈
+import collections  # 최빈값 계산
+import sqlite3      # DB(SQLite)
+
+# SQLite DB 초기화 및 테이블 생성 함수
+def init_db():
+    conn = sqlite3.connect('damage_data.db')
+    cursor = conn.cursor()
+    # 지능, 특화, 무공, 총 공격력, 데미지, 수집시간을 저장하는 단일 테이블
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS damage_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            intelligence INTEGER,
+            specialty INTEGER,
+            weapon_atk INTEGER,
+            total_atk INTEGER,
+            damage_value INTEGER
+        )
+    ''')
+    conn.commit()
+    return conn
+
+# 스테이터스 입력 (Console)
+print("=== [로스트아크 데미지 데이터 수집기] ===")
+print("데이터 수집을 위한 현재 캐릭터 스테이터스 입력")
+intelligence = int(input("현재 지능 수치: "))
+weapon_atk = int(input("현재 무기 공격력: "))
+total_atk = int(input("현재 총 공격력: "))
+specialty = int(input("현재 특화 수치: "))
+
+# CLI에서 입력이 번거로울 때 코드 직접 수정용
+# intelligence = 6407
+# weapon_atk = 2938
+# total_atk = 1790
+# specialty = 160
 
 # ==========================================
 # [OCR Load part]
@@ -12,11 +45,8 @@ import collections # 최빈값 계산
 reader = easyocr.Reader(['en']) 
 print("OCR 로드 완료")
 
-# # 중복 방지를 위한 상태 기억 변수
-# last_damage = ""
-# last_time = 0
-
 # 상태 기억 변수를 버퍼(리스트) 형태로 저장
+session_damages = [] # 검수를 위해 데미지만 임시로 모아둘 리스트
 damage_buffer = []
 last_detect_time = time.time()
 # ==========================================
@@ -38,7 +68,6 @@ with mss.mss() as sct:
 
         # 캡처된 화면을 NumPy 배열로 변환 / BGRA 포맷을 OpenCV 처리를 위해 BGR 포맷으로 변환 (알파 채널 제거)
         img_bgr = cv2.cvtColor(np.array(sct_img), cv2.COLOR_BGRA2BGR)
-
     # ==========================================
 
 
@@ -98,10 +127,6 @@ with mss.mss() as sct:
 
             # 최종적으로 잘라낸 흑백 숫자 이미지
             final_crop = mask_cleaned[crop_y1:crop_y2, crop_x1:crop_x2]
-            
-            # 잘라낸 최종 이미지를 화면에 띄워 확인
-            cv2.imshow('Final Crop for OCR', final_crop)
-
         # ==========================================
 
 
@@ -115,21 +140,8 @@ with mss.mss() as sct:
                 raw_text = "".join(ocr_result)
 
                 # 정규표현식을 사용하여 숫자(0-9)가 아닌 모든 문자(알파벳, 쉼표 등) 제거
-                # "306,867"을 "306867"의 순수 숫자로 정제합니다.
+                # "306,867"을 "306867"로 정제(, 제거)
                 clean_number = re.sub(r'[^0-9]', '', raw_text)
-
-                # # 중복 방지
-                # if clean_number:
-                #     current_time = time.time()
-                    
-                #     # 방금 읽은 데미지와 다르거나, 같은 데미지라도 1.5초 이상 지났다면 (연속 타격 인정) 새로운 타격으로 간주
-                #     if clean_number != last_damage or (current_time - last_time) > 1.5:
-                #         print(f"[새로운 데미지 인식 완료] : {clean_number}")
-                        
-                #         # 방금 인식한 데이터로 기억 갱신
-                #         last_damage = clean_number
-                #         last_time = current_time
-
 
                 # 버퍼 수집
                 # 자잘한 1~3자리 노이즈는 무시하고, 4자리 이상의 유의미한 데미지만 바구니에 담기
@@ -137,31 +149,62 @@ with mss.mss() as sct:
                     damage_buffer.append(clean_number)
                     last_detect_time = time.time() # 숫자가 마지막으로 목격된 시간 갱신
         
-        # 화면에서 숫자가 안 보인지 0.5초가 지났고, 바구니(버퍼)에 수집된 데이터가 있다면?
+        # 화면에서 숫자가 안 보인지 0.1초가 지났고(대기시간 0.1초), 바구니(버퍼)에 수집된 데이터가 있다면?
         if (time.time() - last_detect_time) > 0.1 and len(damage_buffer) > 0:
             
-            # 수집된 숫자들 중 '가장 많이 등장한 숫자'를 찾음 (노이즈 필터링의 핵심)
+            # 수집된 숫자들 중 '가장 많이 등장한 숫자'를 찾음 (noise)
             counter = collections.Counter(damage_buffer)
             final_damage = counter.most_common(1)[0][0]
             
-            # 추후 이 final_damage를 SQLite DB에 INSERT 하시면 됩니다!
-            print(f" [최종 데미지 확정 DB 저장] : {final_damage} (참고: 수집된 프레임 수 {len(damage_buffer)}개)")
-            print("-" * 50)
+            # DB에 바로 넣지 않고 세션 리스트에 임시 저장
+            session_damages.append(final_damage)
+            print(f"타격 인식 : {final_damage} (현재 수집량: {len(session_damages)}개)")
             
             # 다음 타격을 위해 바구니를 깨끗하게 비우기
             damage_buffer.clear()
-            
         # ==========================================
 
-        # 화면 출력 테스트(불필요한 화면 주석처리)
+        # 화면 출력
         # cv2.imshow('Original ROI', img_bgr)       
         # cv2.imshow('Yellow Mask', mask_cleaned)
         cv2.imshow('Bounding Box Result', img_result)
 
-        # 'q' 키를 누르면 루프 탈출
+        # 'q' 키를 누르면 수집 종료
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
 
 # 루프 종료 후 열려있는 OpenCV 창 모두 닫기
 cv2.destroyAllWindows()
+
+# 수집 데이터 출력, 검수 및 DB 최종 적재
+print("\n" + "="*40)
+print("수집 종료. 데이터를 검수합니다.")
+print(f"총 {len(session_damages)}개의 데미지 데이터가 수집되었습니다.")
+print("수집된 데이터 리스트:", session_damages)
+print("="*40)
+
+# 저장 여부 체크
+save_confirm = input("\n위 데이터를 DB에 저장하시겠습니까? (y/n): ")
+
+if save_confirm.lower() == 'y':
+    conn = init_db()
+    cursor = conn.cursor()
+    
+    # DB에 적재할 튜플 리스트 생성 (입력받은 스탯 포함)
+    db_records = [
+        (intelligence, specialty, weapon_atk, total_atk, dmg) 
+        for dmg in session_damages
+    ]
+    
+    # executemany를 이용한 빠르고 안전한 일괄 적재(Batch Insert)
+    cursor.executemany('''
+        INSERT INTO damage_logs (intelligence, specialty, weapon_atk, total_atk, damage_value)
+        VALUES (?, ?, ?, ?, ?)
+    ''', db_records)
+    
+    conn.commit()
+    conn.close()
+    print(f"\n성공적으로 {len(session_damages)}개의 데이터가 'damage_data.db'에 저장되었습니다!")
+else:
+    print("\n저장 취소. 수집된 데이터는 폐기됩니다.")
