@@ -52,7 +52,7 @@ OCR 엔진(EasyOCR)에 이미지를 전달하기 전, 인식률을 가능한 한
 - 면적이 50픽셀 이하인 자잘한 노이즈는 무시하고, 유효한 숫자 덩어리들을 감싸는 통합 Bounding Box를 계산하여 해당 영역의 흑백 마스크만 정교하게 잘라냅니다(Crop).
 <p align="center">
   <img src="screenshots/5.bounding.png" width="40%">
-  <img src="screenshots/7.체력바숨김.png.png" width="50%">
+  <img src="screenshots/7.체력바숨김.png" width="50%">
 </p>
 
 
