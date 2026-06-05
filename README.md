@@ -39,9 +39,9 @@ OCR 엔진(EasyOCR)에 이미지를 전달하기 전, 인식률을 가능한 한
 - 화면의 밝기 변화에 대응하기 위해 BGR 이미지를 HSV 색상 공간으로 변환합니다.
 - 크리티컬 데미지 폰트의 고유 색상인 '노란색'의 특정 임계값(lower=[15, 150, 150], upper=[35, 255, 255])을 설정하여 마스크를 씌웁니다. 이를 통해 배경과 이펙트 노이즈를 1차로 완전히 제거합니다.   
 <p align="center">
-  <img src="screenshots/3.mask.jpg" width="30%">
-  <img src="screenshots/4-1.HSV 조절.jpg" width="30%">
-  <img src="screenshots/4-2.HSV 조절.jpg" width="30%">
+  <img src="screenshots/3.mask.png" width="30%">
+  <img src="screenshots/4-1.HSV 조절.png" width="30%">
+  <img src="screenshots/4-2.HSV 조절.png" width="30%">
 </p>
 
 ### Morphology Operation (형태학적 연산)
@@ -52,8 +52,8 @@ OCR 엔진(EasyOCR)에 이미지를 전달하기 전, 인식률을 가능한 한
 - cv2.findContours를 통해 마스킹된 흰색 덩어리들의 외곽선을 찾습니다.
 - 면적이 50픽셀 이하인 자잘한 노이즈는 무시하고, 유효한 숫자 덩어리들을 감싸는 통합 Bounding Box를 계산하여 해당 영역의 흑백 마스크만 정교하게 잘라냅니다(Crop).
 <p align="center">
-  <img src="screenshots/5.bounding.jpg" width="48%">
-  <img src="screenshots/6.boundingBOX&Crop.jpg" width="48%">
+  <img src="screenshots/5.bounding.png" width="48%">
+  <img src="screenshots/6.boundingBOX&Crop.png" width="48%">
 </p>
 
 
