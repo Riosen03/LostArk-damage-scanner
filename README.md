@@ -15,7 +15,10 @@ https://github.com/Riosen03/Damage-coefficient-estimation
 ## 2. 주요 기능 및 특징 (Features)
 
 ### 실시간 관심 영역(ROI) 캡처
-전체 화면이 아닌 데미지 발생 영역만 mss 라이브러리로 타겟팅하여 연산량을 최소화하고 실시간 처리 속도를 확보
+전체 화면이 아닌 데미지 발생 영역만 mss 라이브러리로 타겟팅하여 연산량을 최소화하고 실시간 처리 속도를 확보   
+<p align="center">
+  <img src="screenshots/2.ROI지정.png" width="30%">
+</p>
 
 ### 컴퓨터 비전 기반 이진화 및 노이즈 제거(전처리)
 HSV 색상 공간 마스킹, Morphology 연산, 윤곽선(Contour) 검출을 조합하여 화려한 스킬 이펙트 속에서도 폰트 영역만 고립시켜 추출
@@ -34,7 +37,12 @@ OCR 엔진(EasyOCR)에 이미지를 전달하기 전, 인식률을 가능한 한
 
 ### Color Masking (이진화)
 - 화면의 밝기 변화에 대응하기 위해 BGR 이미지를 HSV 색상 공간으로 변환합니다.
-- 크리티컬 데미지 폰트의 고유 색상인 '노란색'의 특정 임계값(lower=[15, 150, 150], upper=[35, 255, 255])을 설정하여 마스크를 씌웁니다. 이를 통해 배경과 이펙트 노이즈를 1차로 완전히 제거합니다.
+- 크리티컬 데미지 폰트의 고유 색상인 '노란색'의 특정 임계값(lower=[15, 150, 150], upper=[35, 255, 255])을 설정하여 마스크를 씌웁니다. 이를 통해 배경과 이펙트 노이즈를 1차로 완전히 제거합니다.   
+<p align="center">
+  <img src="screenshots/3.mask.jpg" width="30%">
+  <img src="screenshots/4-1.HSV 조절.jpg" width="30%">
+  <img src="screenshots/4-2.HSV 조절.jpg" width="30%">
+</p>
 
 ### Morphology Operation (형태학적 연산)
 - 임계값으로 인해 글자 테두리가 자글자글해지거나 깎여나가는 현상을 복원하기 위해 닫힘(Closing) 연산을 적용합니다.
@@ -43,6 +51,10 @@ OCR 엔진(EasyOCR)에 이미지를 전달하기 전, 인식률을 가능한 한
 ### Bounding Box & Crop (객체 탐지 및 분리)
 - cv2.findContours를 통해 마스킹된 흰색 덩어리들의 외곽선을 찾습니다.
 - 면적이 50픽셀 이하인 자잘한 노이즈는 무시하고, 유효한 숫자 덩어리들을 감싸는 통합 Bounding Box를 계산하여 해당 영역의 흑백 마스크만 정교하게 잘라냅니다(Crop).
+<p align="center">
+  <img src="screenshots/5.bounding.jpg" width="48%">
+  <img src="screenshots/6.boundingBOX&Crop.jpg" width="48%">
+</p>
 
 
 
