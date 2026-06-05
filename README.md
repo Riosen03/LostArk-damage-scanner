@@ -1,4 +1,4 @@
-# LostArt-Damage-Scanner
+# LostArk-Damage-Scanner
 
 ## 1. 프로젝트 소개 (Introduce)
 본 프로젝트는 OpenCV와 OCR을 활용하여, 이펙트와 노이즈가 심한 게임 화면 속에서 특정 데미지 숫자 폰트만을 실시간으로 스캔하고 추출하는 시스템입니다.   
